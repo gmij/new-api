@@ -20,6 +20,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/oauth"
 	"github.com/QuantumNous/new-api/relay"
+	"github.com/QuantumNous/new-api/relay/channel/kiro"
 	"github.com/QuantumNous/new-api/router"
 	"github.com/QuantumNous/new-api/service"
 	_ "github.com/QuantumNous/new-api/setting/performance_setting"
@@ -119,6 +120,12 @@ func main() {
 			return nil
 		}
 		return a
+	}
+
+	// Wire Kiro channel key update callback (breaks relay/channel/kiro -> model import cycle)
+	kiro.UpdateChannelKeyFunc = func(channelID int, newKey string) error {
+		ch := model.Channel{Id: channelID}
+		return model.DB.Model(&ch).Update("key", newKey).Error
 	}
 
 	// Channel upstream model update check task
