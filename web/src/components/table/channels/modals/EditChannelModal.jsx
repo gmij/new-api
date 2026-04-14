@@ -365,6 +365,8 @@ const EditChannelModal = (props) => {
   const [codexOAuthModalVisible, setCodexOAuthModalVisible] = useState(false);
   const [codexCredentialRefreshing, setCodexCredentialRefreshing] =
     useState(false);
+  const [kiroCredentialRefreshing, setKiroCredentialRefreshing] =
+    useState(false);
   const [paramOverrideEditorVisible, setParamOverrideEditorVisible] =
     useState(false);
 
@@ -1228,6 +1230,27 @@ const EditChannelModal = (props) => {
       showError(error.message || t('刷新失败'));
     } finally {
       setCodexCredentialRefreshing(false);
+    }
+  };
+
+  const handleRefreshKiroCredential = async () => {
+    if (!isEdit) return;
+
+    setKiroCredentialRefreshing(true);
+    try {
+      const res = await API.post(
+        `/api/channel/${channelId}/kiro/refresh`,
+        {},
+        { skipErrorHandler: true },
+      );
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || 'Failed to refresh credential');
+      }
+      showSuccess(t('凭证已刷新'));
+    } catch (error) {
+      showError(error.message || t('刷新失败'));
+    } finally {
+      setKiroCredentialRefreshing(false);
     }
   };
 
@@ -2967,6 +2990,17 @@ const EditChannelModal = (props) => {
                                   >
                                     {t('格式化')}
                                   </Button>
+                                  {isEdit && (
+                                    <Button
+                                      size='small'
+                                      type='primary'
+                                      theme='outline'
+                                      onClick={handleRefreshKiroCredential}
+                                      loading={kiroCredentialRefreshing}
+                                    >
+                                      {t('刷新凭证')}
+                                    </Button>
+                                  )}
                                   {isEdit && (
                                     <Button
                                       size='small'
