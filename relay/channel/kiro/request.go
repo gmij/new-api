@@ -1,7 +1,6 @@
 package kiro
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -143,7 +142,7 @@ func buildKiroTools(claudeTools any) ([]KiroTool, error) {
 
 		var inputSchema *ToolInputSchema
 		if schema, ok := toolMap["input_schema"]; ok && schema != nil {
-			schemaJSON, err := json.Marshal(schema)
+			schemaJSON, err := common.Marshal(schema)
 			if err == nil {
 				inputSchema = &ToolInputSchema{JSON: schemaJSON}
 			}

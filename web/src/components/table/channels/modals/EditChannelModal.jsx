@@ -1565,6 +1565,42 @@ const EditChannelModal = (props) => {
       }
     }
 
+    if (localInputs.type === 58) {
+      if (batch) {
+        showInfo(t('Kiro 渠道不支持批量创建'));
+        return;
+      }
+
+      const rawKey = (localInputs.key || '').trim();
+      if (!isEdit && rawKey === '') {
+        showInfo(t('请输入密钥！'));
+        return;
+      }
+
+      if (rawKey !== '') {
+        if (!verifyJSON(rawKey)) {
+          showInfo(t('密钥必须是合法的 JSON 格式！'));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(rawKey);
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            showInfo(t('密钥必须是 JSON 对象'));
+            return;
+          }
+          const accessToken = String(parsed.access_token || '').trim();
+          if (!accessToken) {
+            showInfo(t('密钥 JSON 必须包含 access_token'));
+            return;
+          }
+          localInputs.key = JSON.stringify(parsed);
+        } catch (error) {
+          showInfo(t('密钥必须是合法的 JSON 格式！'));
+          return;
+        }
+      }
+    }
+
     if (localInputs.type === 41) {
       const keyType = localInputs.vertex_key_type || 'json';
       if (keyType === 'api_key') {
@@ -1954,7 +1990,7 @@ const EditChannelModal = (props) => {
     }
   };
 
-  const batchAllowed = (!isEdit || isMultiKeyChannel) && inputs.type !== 57;
+  const batchAllowed = (!isEdit || isMultiKeyChannel) && inputs.type !== 57 && inputs.type !== 58;
   const batchExtra = batchAllowed ? (
     <Space>
       {!isEdit && (
@@ -2614,6 +2650,17 @@ const EditChannelModal = (props) => {
                       />
                     )}
 
+                    {inputs.type === 58 && (
+                      <Banner
+                        type='warning'
+                        closeIcon={null}
+                        className='mb-4 rounded-xl'
+                        description={t(
+                          '免责声明：仅限个人使用，请勿分发或共享任何凭证。该渠道通过 AWS CodeWhisperer 接入 Claude 模型，请在充分了解流程与风险后使用，并遵守 AWS 的相关条款与政策。',
+                        )}
+                      />
+                    )}
+
                     {inputs.type === 20 && (
                       <Form.Switch
                         field='is_enterprise_account'
@@ -2879,6 +2926,64 @@ const EditChannelModal = (props) => {
                               onSuccess={handleCodexOAuthGenerated}
                             />
                           </>
+                        ) : inputs.type === 58 ? (
+                          <Form.TextArea
+                            field='key'
+                            label={
+                              isEdit
+                                ? t('密钥（编辑模式下，保存的密钥不会显示）')
+                                : t('密钥')
+                            }
+                            placeholder={t(
+                              '请输入 JSON 格式的 OAuth 凭据，例如：\n{\n  "access_token": "eyJ...",\n  "refresh_token": "Atzr|...",\n  "expires_at": "2025-01-01T00:00:00Z",\n  "auth_method": "social",\n  "region": "us-east-1"\n}',
+                            )}
+                            rules={
+                              isEdit
+                                ? []
+                                : [
+                                    {
+                                      required: true,
+                                      message: t('请输入密钥'),
+                                    },
+                                  ]
+                            }
+                            autoComplete='new-password'
+                            onChange={(value) =>
+                              handleInputChange('key', value)
+                            }
+                            extraText={
+                              <div className='flex flex-col gap-2'>
+                                <Text type='tertiary' size='small'>
+                                  {t(
+                                    '仅支持 JSON 对象，必须包含 access_token，可选 refresh_token、expires_at、auth_method（social/IdC）、region',
+                                  )}
+                                </Text>
+                                <Space wrap spacing='tight'>
+                                  <Button
+                                    size='small'
+                                    type='primary'
+                                    theme='outline'
+                                    onClick={() => formatJsonField('key')}
+                                  >
+                                    {t('格式化')}
+                                  </Button>
+                                  {isEdit && (
+                                    <Button
+                                      size='small'
+                                      type='primary'
+                                      theme='outline'
+                                      onClick={handleShow2FAModal}
+                                    >
+                                      {t('查看密钥')}
+                                    </Button>
+                                  )}
+                                  {batchExtra}
+                                </Space>
+                              </div>
+                            }
+                            autosize
+                            showClear
+                          />
                         ) : inputs.type === 41 &&
                           (inputs.vertex_key_type || 'json') === 'json' ? (
                           <>
