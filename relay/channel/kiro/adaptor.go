@@ -138,8 +138,9 @@ func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, request
 }
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
-	// Kiro always returns AWS Event Stream binary, even for non-stream requests.
-	// We detect by Content-Type or always use the event stream parser.
+	// Kiro always returns AWS Event Stream binary.
+	// In stream mode we emit incremental Claude SSE events; in non-stream mode
+	// we accumulate the full response and return it as a single Claude response.
 	if info.IsStream {
 		return kiroStreamHandler(c, resp, info)
 	}
