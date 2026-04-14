@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	expireWindowMS     = 5 * 60 * 1000   // 5 minutes before expiry
-	refreshDebounceMS  = 30 * 1000       // 30 seconds between refresh attempts
+	expireWindow    = 5 * time.Minute   // refresh if token expires within this window
+	refreshDebounce = 30 * time.Second  // minimum interval between refresh attempts
 )
 
 // refreshState tracks the per-refreshToken debounce and in-flight state.
@@ -45,7 +45,7 @@ func NeedsRefresh(expiresAtStr string) bool {
 	if err != nil {
 		return false
 	}
-	return time.Until(expiresAt).Milliseconds() <= expireWindowMS
+	return time.Until(expiresAt) <= expireWindow
 }
 
 // RefreshAccessToken refreshes the access token using the appropriate method.
@@ -63,7 +63,7 @@ func RefreshAccessToken(key *OAuthKey) (*RefreshResult, error) {
 	defer state.mu.Unlock()
 
 	// Debounce: skip if last attempt was < 30s ago.
-	if time.Since(state.lastAttempt).Milliseconds() < refreshDebounceMS {
+	if time.Since(state.lastAttempt) < refreshDebounce {
 		return nil, fmt.Errorf("kiro: refresh debounced (last attempt %s ago)", time.Since(state.lastAttempt).Round(time.Second))
 	}
 	state.lastAttempt = time.Now()

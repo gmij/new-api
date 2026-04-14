@@ -2,6 +2,7 @@ package kiro
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -17,6 +18,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// crc32CastagnoliTable is created once and reused for all CRC-32C validations.
+var crc32CastagnoliTable = crc32.MakeTable(crc32.Castagnoli)
 
 // eventStreamMessage represents a single parsed AWS Event Stream frame.
 type eventStreamMessage struct {
@@ -54,7 +58,7 @@ func parseEventStreamFrame(buf []byte, offset int) (*eventStreamMessage, int, er
 
 	// Validate message CRC (CRC-32C of entire frame excluding the last 4 bytes).
 	messageCRC := binary.BigEndian.Uint32(buf[offset+totalLength-4:])
-	computed := crc32.Checksum(buf[offset:offset+totalLength-4], crc32.MakeTable(crc32.Castagnoli))
+	computed := crc32.Checksum(buf[offset:offset+totalLength-4], crc32CastagnoliTable)
 	if messageCRC != computed {
 		return nil, 0, fmt.Errorf("kiro: event stream CRC mismatch")
 	}
@@ -345,9 +349,31 @@ func buildClaudeFullResponse(info *claude.ClaudeResponseInfo) *dto.ClaudeRespons
 
 // emitToolUseBlock sends a tool_use content block as a Claude stream event.
 func emitToolUseBlock(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *claude.ClaudeResponseInfo, id, name, inputJSON string) {
-	sseData := fmt.Sprintf(`{"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":%s,"name":%s,"input":%s}}`,
-		mustMarshalString(id), mustMarshalString(name), inputJSON)
-	_ = claude.HandleStreamResponseData(c, info, claudeInfo, sseData)
+	// Build the event using proper JSON marshalling to prevent injection.
+	contentBlock := map[string]any{
+		"type": "tool_use",
+		"id":   id,
+		"name": name,
+	}
+	// Parse input as JSON; if invalid, wrap as a string value.
+	var inputObj any
+	if json.Valid([]byte(inputJSON)) {
+		inputObj = json.RawMessage(inputJSON)
+	} else {
+		inputObj = inputJSON
+	}
+	contentBlock["input"] = inputObj
+
+	event := map[string]any{
+		"type":          "content_block_start",
+		"index":         1,
+		"content_block": contentBlock,
+	}
+	sseBytes, err := common.Marshal(event)
+	if err != nil {
+		return
+	}
+	_ = claude.HandleStreamResponseData(c, info, claudeInfo, string(sseBytes))
 }
 
 // mustMarshalString JSON-encodes a string (with proper escaping).
