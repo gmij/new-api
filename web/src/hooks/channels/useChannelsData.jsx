@@ -39,6 +39,7 @@ import { useChannelUpstreamUpdates } from './useChannelUpstreamUpdates';
 import { parseUpstreamUpdateMeta } from './upstreamUpdateUtils';
 import { Modal, Button } from '@douyinfe/semi-ui';
 import { openCodexUsageModal } from '../../components/table/channels/modals/CodexUsageModal';
+import { openKiroInfoModal } from '../../components/table/channels/modals/KiroInfoModal';
 
 export const useChannelsData = () => {
   const { t } = useTranslation();
@@ -756,6 +757,19 @@ export const useChannelsData = () => {
   const updateChannelBalance = async (record) => {
     if (record?.type === 57) {
       openCodexUsageModal({
+        t,
+        record,
+        onCopy: async (text) => {
+          const ok = await copy(text);
+          if (ok) showSuccess(t('已复制'));
+          else showError(t('复制失败'));
+        },
+      });
+      return;
+    }
+
+    if (record?.type === 58) {
+      openKiroInfoModal({
         t,
         record,
         onCopy: async (text) => {

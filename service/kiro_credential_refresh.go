@@ -38,6 +38,12 @@ const (
 	kiroRefreshIdCURL    = "https://oidc.%s.amazonaws.com/token"
 )
 
+// ParseKiroOAuthKeyPublic is the exported version of parseKiroOAuthKey,
+// used by controllers that need to inspect the key without refreshing.
+func ParseKiroOAuthKeyPublic(raw string) (*KiroOAuthKey, error) {
+	return parseKiroOAuthKey(raw)
+}
+
 func parseKiroOAuthKey(raw string) (*KiroOAuthKey, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, fmt.Errorf("kiro channel: empty oauth key")
